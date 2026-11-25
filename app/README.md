@@ -28,7 +28,7 @@ Select **My location** and grant browser permission to center the map on your lo
 
 ## Standalone Windows executable
 
-Double-click `St-Johns-River-Watch-windows-x64.exe` to start the local server and open the dashboard in your browser. The executable includes Node and the built app. Live river data and map tiles require internet access. Close the console window to stop the server.
+Download `St-Johns-River-Watch-windows-x64.exe` from the [latest GitHub release](https://github.com/bmyers37/st-johns-river-watch/releases/latest). Double-click it to start the local server and open the dashboard in your browser. The executable includes Node and the built app. Live river data and map tiles require internet access. Close the console window to stop the server.
 
 To build the executable from source, use Node.js 26 or newer on Windows and run `npm ci` followed by `npm run package:windows` in this directory. The executable is created under `release/`.
 
@@ -60,7 +60,7 @@ screenshots in `shots/`. `npm run dev` runs the Vite dev server for editing (sta
 
 No API keys or paid services are used.
 
-## Where the data comes from (verified 2026-11-25)
+## Where the data comes from
 
 | Data | Source | Endpoint |
 |---|---|---|
@@ -77,6 +77,8 @@ No API keys or paid services are used.
 | FEMA flood zones | FEMA National Flood Hazard Layer | `hazards.fema.gov/arcgis/rest/services/public/NFHL` |
 | Base maps | Esri (dark grey, streets, imagery), USGS Topo | `server.arcgisonline.com`, `basemap.nationalmap.gov` |
 
+River Watch currently uses USGS WaterServices for gauge readings, history, rainfall and station metadata. USGS plans to retire that service on February 22, 2027. [USGS shutdown notice](https://waterservices.usgs.gov/)
+
 ## How the data is handled
 
 * **Nothing is invented.** If a value is missing, the app says "—", "No data" or "Unavailable". Readings
@@ -90,8 +92,6 @@ No API keys or paid services are used.
 * **Connection problems:** the last good data stays on screen with a "Connection problem · showing data from
   …" notice. The app retries after 15 s, 30 s, 60 s, then every 120 s. The server keeps the last good answer from
   each source if that source fails, and the 🗄 button shows the health of every source.
-* If the server is not running (e.g. the built page is opened from somewhere else), the app fetches the
-  public sources directly from the browser. All of them allow that.
 
 ## Unavailable or incomplete
 
@@ -102,9 +102,6 @@ No API keys or paid services are used.
   "Operational status unknown".
 * **Retention ponds:** no public stormwater-pond inventory was found for Brevard County / Titusville. NHD
   ponds are shown and labelled "may be stormwater ponds – not verified".
-* **Squires Drive:** it lies just west of where the City of Titusville pipe inventory ends (about 80.863° W).
-  There, Brevard County's ditch layer and NHD are the mapped drainage. City structure elevations are in NGVD29
-  and are not compared with NAVD88 values.
 * **Culverts:** inside Titusville city limits the city's pipe inventory covers them. Elsewhere only those in
   NHD or the SJRWMD structure inventory appear. Pipe flow direction and many elevations are not recorded.
 * **Rainfall:** only USGS rain gauges in the basin (few). NWS station rainfall is not reported reliably by
