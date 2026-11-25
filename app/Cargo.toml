@@ -1,0 +1,13 @@
+[package]
+name = "st-johns-river-watch"
+version = "1.0.0"
+edition = "2021"
+description = "Launcher for St. Johns River Watch: builds if needed, starts the local server and opens the browser"
+publish = false
+
+# No dependencies: the launcher only uses the Rust standard library.
+[dependencies]
+
+[profile.release]
+opt-level = "s"
+strip = true

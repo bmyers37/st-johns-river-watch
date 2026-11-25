@@ -1,0 +1,35 @@
+{
+  "name": "st-johns-river-watch",
+  "private": true,
+  "version": "1.0.0",
+  "description": "St. Johns River Watch - live hydrological monitoring dashboard for the St. Johns River, Florida",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit -p tsconfig.json && vite build && vite build --ssr server/index.ts --outDir dist-server --emptyOutDir",
+    "start": "node dist-server/index.js",
+    "smoke": "node scripts/smoke-test.mjs"
+  },
+  "engines": {
+    "node": "^22.12.0 || >=24.0.0"
+  },
+  "dependencies": {
+    "echarts": "^6.1.0",
+    "lucide-react": "^1.80.0",
+    "maplibre-gl": "^6.19.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.5",
+    "@types/geojson": "^7946.0.16",
+    "@types/node": "^26.6.10",
+    "@types/react": "^19.3.2",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.3.0",
+    "puppeteer-core": "^25.18.1",
+    "tailwindcss": "^4.3.5",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.8"
+  }
+}

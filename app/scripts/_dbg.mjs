@@ -1,0 +1,17 @@
+import { spawn } from 'node:child_process';
+import puppeteer from 'puppeteer-core';
+const app = 'D:/maker_stuff/Craft_anything/levels/app';
+const server = spawn(process.execPath, [app + '/dist-server/index.js'], { env: { ...process.env, PORT: '5198' } });
+await new Promise(r => setTimeout(r, 1500));
+const b = await puppeteer.launch({ executablePath: 'C:/Program Files/Google/Chrome/Application/chrome.exe', headless: true, args: ['--enable-unsafe-swiftshader', '--window-size=1600,900'] });
+b.on('targetcreated', async t => { if (t.type() === 'worker') { const w = await t.worker(); console.log('worker created', t.url().slice(-60)); w?.on('console', m => console.log('wconsole', m.text().slice(0,200))); } });
+const p = await b.newPage();
+await p.setViewport({ width: 1600, height: 900 });
+p.on('console', m => console.log('console', m.type(), m.text().slice(0, 300)));
+p.on('pageerror', e => console.log('pageerror', e.message));
+p.on('requestfailed', r => console.log('reqfail', r.url().slice(0, 120), r.failure()?.errorText));
+await p.goto('http://127.0.0.1:5198', { waitUntil: 'domcontentloaded' });
+await new Promise(r => setTimeout(r, 12000));
+console.log(await p.evaluate(() => { const m = window.__map; const c = m.getContainer(); return JSON.stringify({ loaded: m.loaded(), styleLoaded: m.isStyleLoaded(), w: c.clientWidth, h: c.clientHeight, center: m.getCenter(), zoom: m.getZoom(), canvas: m.getCanvas().width + 'x' + m.getCanvas().height }); }));
+await p.screenshot({ path: app + '/shots/dbg.png' });
+await b.close(); server.kill(); process.exit(0);

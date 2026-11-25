@@ -1,0 +1,8 @@
+/*
+!/.gitignore
+!/README.md
+!/.github/
+!/app/
+/app/.env
+/app/.env.*
+**/*.log
