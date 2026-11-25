@@ -5,11 +5,15 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { execFile } from 'node:child_process';
+import sea from 'node:sea';
 import { DataEngine } from '../src/shared/engine';
 import { REFRESH_SECONDS } from '../src/shared/config';
 
 const PORT = Number(process.env.PORT ?? 5179);
-const HOST = process.env.HOST ?? '127.0.0.1';
+const standalone = sea.isSea();
+const HOST = standalone ? '127.0.0.1' : process.env.HOST ?? '127.0.0.1';
+const embeddedAssets = standalone ? new Set(sea.getAssetKeys()) : null;
 const here = path.dirname(fileURLToPath(import.meta.url));
 const DIST = path.resolve(here, '..', 'dist');
 const engine = new DataEngine();
@@ -37,16 +41,25 @@ function serveStatic(res: http.ServerResponse, pathname: string) {
     res.writeHead(403).end();
     return;
   }
-  if (!fs.existsSync(file) || fs.statSync(file).isDirectory()) file = path.join(DIST, 'index.html');
-  if (!fs.existsSync(file)) {
+  let asset = path.relative(DIST, file).split(path.sep).join('/');
+  if (embeddedAssets) {
+    if (!embeddedAssets.has(asset)) asset = 'index.html';
+  } else if (!fs.existsSync(file) || fs.statSync(file).isDirectory()) {
+    file = path.join(DIST, 'index.html');
+  }
+  if (!embeddedAssets && !fs.existsSync(file)) {
     res.writeHead(500, { 'Content-Type': 'text/plain' }).end('The app has not been built yet. Run "npm run build" first.');
     return;
   }
-  const ext = path.extname(file);
+  const ext = path.extname(embeddedAssets ? asset : file);
   res.writeHead(200, {
     'Content-Type': MIME[ext] ?? 'application/octet-stream',
     'Cache-Control': ext === '.html' ? 'no-cache' : 'public, max-age=86400',
   });
+  if (embeddedAssets) {
+    res.end(Buffer.from(sea.getRawAsset(asset)));
+    return;
+  }
   const stream = fs.createReadStream(file);
   stream.on('error', () => res.destroy());
   stream.pipe(res);
@@ -102,8 +115,16 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, HOST, () => {
-  console.log(`\n  St. Johns River Watch is listening on ${HOST}:${PORT}\n`);
+  const address = server.address();
+  const port = address && typeof address !== 'string' ? address.port : PORT;
+  console.log(`\n  St. Johns River Watch is listening on ${HOST}:${port}\n`);
   console.log('  Leave this window open. Close it (or press Ctrl+C) to stop the app.\n');
+  if (standalone && !process.argv.includes('--no-browser')) {
+    const url = `http://127.0.0.1:${port}`;
+    execFile('cmd.exe', ['/d', '/c', 'start', url], { windowsHide: true }, (error) => {
+      if (error) console.error(`  Open ${url} in your browser.`);
+    });
+  }
   // Warm the caches so the first page load is quick.
   engine.snapshot().then(
     (s) => console.log(`  Loaded ${s.stations.length} stations, ${s.rain.length} rain gauges, ${s.alerts.length} official alerts.`),

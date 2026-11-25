@@ -25,7 +25,13 @@ opens on the Titusville, Geneva, Lake Harney and Cocoa area.
   gauges report every 15–60 minutes, so many refreshes bring no new measurement.
 * Dark or light theme, full-screen map (⤢ button or Esc to leave), and your settings are remembered.
 
-## Starting it (Windows)
+## Standalone Windows executable
+
+Double-click `St-Johns-River-Watch-windows-x64.exe` to start the local server and open the dashboard in your browser. The executable includes Node and the built app. Live river data and map tiles require internet access. Close the console window to stop the server.
+
+To build the executable from source, use Node.js 26 or newer on Windows and run `npm ci` followed by `npm run package:windows` in this directory. The executable is created under `release/`.
+
+## Starting from source (Windows)
 
 1. Install **Node.js** (free): <https://nodejs.org> → "LTS" → install with the default options.
 2. Double-click **`Start River Watch.bat`** in this folder.
