@@ -1,7 +1,8 @@
 # St. Johns River Watch
 
-A live monitoring dashboard for the St. Johns River, Florida, from its headwaters to Jacksonville. It
-opens on the Titusville, Geneva, Lake Harney and Cocoa area.
+A live monitoring dashboard for the St. Johns River, Florida, from its headwaters to Jacksonville.
+It opens with a basin overview on the first visit and remembers the last view in that browser.
+Select **My location** and grant browser permission to center the map on your location within the coverage area.
 
 * **Live map**: every NOAA/NWS forecast point and USGS gauge in the basin, coloured by official flood
   category, with the water level, a rising/falling arrow, stale-data marks and pulsing for moderate or major floods.

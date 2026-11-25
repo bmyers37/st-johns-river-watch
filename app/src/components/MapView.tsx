@@ -4,7 +4,7 @@ import type { GeoJSONSource, MapGeoJSONFeature } from 'maplibre-gl';
 import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 import { Crosshair, Home, Layers, Minimize2, Navigation, X } from 'lucide-react';
 import type { Snapshot, Station } from '../shared/types';
-import { DEFAULT_VIEW, SQUIRES_DRIVE } from '../shared/config';
+import { BASIN_BBOX } from '../shared/config';
 import { VECTOR_LAYERS } from '../shared/adapters/gis';
 import { getLayer, getMainStem } from '../lib/api';
 import { SEVERITY, TREND, severityRank } from '../lib/format';
@@ -37,6 +37,8 @@ interface Props {
 maplibregl.setWorkerUrl(maplibreWorkerUrl);
 
 const EMPTY: GeoJSON.FeatureCollection = { type: 'FeatureCollection', features: [] };
+const basinBounds: maplibregl.LngLatBoundsLike = [BASIN_BBOX.xmin, BASIN_BBOX.ymin, BASIN_BBOX.xmax, BASIN_BBOX.ymax];
+const basinView = { padding: 32, maxZoom: 8 };
 const esc = (s: unknown) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 
 /** Which vector sources each toggle needs. */
@@ -134,7 +136,9 @@ export default function MapView(p: Props) {
   const markers = useRef(new Map<string, { m: maplibregl.Marker; el: HTMLDivElement; inner: HTMLDivElement; key: string }>());
   const rainMarkers = useRef<maplibregl.Marker[]>([]);
   const pinMarker = useRef<maplibregl.Marker | null>(null);
-  const [zoom, setZoom] = useState(DEFAULT_VIEW.zoom);
+  const [zoom, setZoom] = useState(0);
+  const [locating, setLocating] = useState(false);
+  const [locationMessage, setLocationMessage] = useState('');
   const [layerOpen, setLayerOpen] = useState(false);
   const [layerStatus, setLayerStatus] = useState<Record<string, 'loading' | 'ok' | 'error' | 'zoom'>>({});
   const [mainStem, setMainStem] = useState<GeoJSON.FeatureCollection | null>(null);
@@ -144,12 +148,11 @@ export default function MapView(p: Props) {
 
   // ---- create the map once ----
   useEffect(() => {
-    const saved = loadPref<{ center: [number, number]; zoom: number } | null>('view', null);
+    const saved = loadPref<{ center: [number, number]; zoom: number } | null>('basinView', null);
     const map = new maplibregl.Map({
       container: container.current!,
       style: buildStyle(),
-      center: saved?.center ?? DEFAULT_VIEW.center,
-      zoom: saved?.zoom ?? DEFAULT_VIEW.zoom,
+      ...(saved ?? { bounds: basinBounds, fitBoundsOptions: basinView }),
       maxBounds: [
         [-84.5, 26.0],
         [-78.5, 31.8],
@@ -158,6 +161,7 @@ export default function MapView(p: Props) {
       canvasContextAttributes: { preserveDrawingBuffer: true },
     } as maplibregl.MapOptions);
     mapRef.current = map;
+    setZoom(map.getZoom());
     (window as any).__map = map;
     map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
     map.addControl(new maplibregl.ScaleControl({ unit: 'imperial' }), 'bottom-right');
@@ -169,7 +173,7 @@ export default function MapView(p: Props) {
       setReady(true);
     });
     map.on('zoom', () => setZoom(map.getZoom()));
-    map.on('moveend', () => savePref('view', { center: map.getCenter().toArray(), zoom: map.getZoom() }));
+    map.on('moveend', () => savePref('basinView', { center: map.getCenter().toArray(), zoom: map.getZoom() }));
     map.on('error', (e) => {
       // tile errors from optional overlays should not break the app
       if ((e as any)?.sourceId) return;
@@ -470,7 +474,33 @@ export default function MapView(p: Props) {
     setTimeout(() => mapRef.current?.resize(), 50);
   }, [p.mapOnly]);
 
-  const fly = (center: [number, number], z: number) => mapRef.current?.flyTo({ center, zoom: z, speed: 1.4 });
+  function locate() {
+    const map = mapRef.current;
+    if (!map) return;
+    if (!navigator.geolocation) {
+      setLocationMessage('Location is unavailable in this browser.');
+      return;
+    }
+    setLocating(true);
+    setLocationMessage('');
+    navigator.geolocation.getCurrentPosition(({ coords }) => {
+      if (mapRef.current !== map) return;
+      setLocating(false);
+      const { longitude, latitude } = coords;
+      if (longitude < BASIN_BBOX.xmin || longitude > BASIN_BBOX.xmax ||
+          latitude < BASIN_BBOX.ymin || latitude > BASIN_BBOX.ymax) {
+        setLocationMessage('Your location is outside the St. Johns River map area.');
+        return;
+      }
+      map.flyTo({ center: [longitude, latitude], zoom: Math.max(map.getZoom(), 11), speed: 1.4 });
+    }, (error) => {
+      if (mapRef.current !== map) return;
+      setLocating(false);
+      setLocationMessage(error.code === error.PERMISSION_DENIED
+        ? 'Location access is blocked. Check your browser permissions.'
+        : 'Your location couldn’t be found. Try again.');
+    }, { timeout: 10000 });
+  }
   const officialFlood = p.snapshot?.alerts.filter((a) => a.isFlood && a.isWarning) ?? [];
 
   return (
@@ -491,16 +521,17 @@ export default function MapView(p: Props) {
           ))}
         </div>
         <div className="glass pointer-events-auto flex items-center gap-1 rounded-xl p-1 text-[12px]">
-          <button className="btn border-0 bg-transparent px-2" onClick={() => fly(DEFAULT_VIEW.center, DEFAULT_VIEW.zoom)} title="Titusville · Geneva · Lake Harney · Cocoa">
-            <Home size={14} /> Titusville region
+          <button className="btn border-0 bg-transparent px-2" onClick={() => {
+            setLocationMessage('');
+            mapRef.current?.fitBounds(basinBounds, basinView);
+          }} disabled={locating} title="Whole river: headwaters to Jacksonville">
+            <Home size={14} /> Whole river
           </button>
-          <button className="btn border-0 bg-transparent px-2" onClick={() => fly([SQUIRES_DRIVE.lon - 0.02, SQUIRES_DRIVE.lat], 13.2)} title="Drainage around Squires Drive toward SR 46 and the river">
-            <Crosshair size={14} /> Squires Dr
-          </button>
-          <button className="btn border-0 bg-transparent px-2" onClick={() => fly([-81.25, 29.0], 7.6)} title="Whole river: headwaters to Jacksonville">
-            <Navigation size={14} /> Whole river
+          <button className="btn border-0 bg-transparent px-2" onClick={locate} disabled={locating}>
+            <Navigation size={14} /> {locating ? 'Locating…' : 'My location'}
           </button>
         </div>
+        {locationMessage && <p className="glass max-w-64 rounded-xl px-3 py-2 text-xs" role="status">{locationMessage}</p>}
         {layerOpen && <LayerPanel layers={p.layers} onLayers={p.onLayers} status={layerStatus} zoom={zoom} flowInfo={flowInfo} onClose={() => setLayerOpen(false)} />}
       </div>
 

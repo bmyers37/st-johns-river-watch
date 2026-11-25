@@ -6,10 +6,6 @@ export const REFRESH_SECONDS = 120;
 /** Area covering the St. Johns basin from Fort Drum marsh to the Mayport mouth. */
 export const BASIN_BBOX = { xmin: -82.1, ymin: 27.45, xmax: -80.35, ymax: 30.65 };
 
-/** Default map view: Titusville, Geneva, Lake Harney and Cocoa. */
-export const DEFAULT_VIEW = { center: [-80.93, 28.56] as [number, number], zoom: 9.6 };
-export const SQUIRES_DRIVE = { lat: 28.6512, lon: -80.8756, label: 'Squires Dr, Titusville' };
-
 export const USGS_HUCS = ['03080101', '03080102', '03080103', '03080201', '03080202', '03080203'];
 
 export const ENDPOINTS = {
