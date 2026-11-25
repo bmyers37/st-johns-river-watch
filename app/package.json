@@ -1,7 +1,7 @@
 {
   "name": "st-johns-river-watch",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "St. Johns River Watch - live hydrological monitoring dashboard for the St. Johns River, Florida",
   "type": "module",
   "scripts": {

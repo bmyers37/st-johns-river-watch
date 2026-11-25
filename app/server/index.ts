@@ -114,25 +114,47 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, HOST, () => {
+function openDashboard(port: number) {
+  if (!standalone || process.argv.includes('--no-browser')) return;
+  const url = `http://127.0.0.1:${port}`;
+  execFile('cmd.exe', ['/d', '/c', 'start', url], { windowsHide: true }, (error) => {
+    if (error) console.error(`  Open ${url} in your browser.`);
+  });
+}
+
+server.on('listening', () => {
   const address = server.address();
   const port = address && typeof address !== 'string' ? address.port : PORT;
   console.log(`\n  St. Johns River Watch is listening on ${HOST}:${port}\n`);
   console.log('  Leave this window open. Close it (or press Ctrl+C) to stop the app.\n');
-  if (standalone && !process.argv.includes('--no-browser')) {
-    const url = `http://127.0.0.1:${port}`;
-    execFile('cmd.exe', ['/d', '/c', 'start', url], { windowsHide: true }, (error) => {
-      if (error) console.error(`  Open ${url} in your browser.`);
-    });
-  }
+  openDashboard(port);
   // Warm the caches so the first page load is quick.
   engine.snapshot().then(
     (s) => console.log(`  Loaded ${s.stations.length} stations, ${s.rain.length} rain gauges, ${s.alerts.length} official alerts.`),
     (e) => console.error('  First data load failed:', e.message),
   );
 });
-server.on('error', (e: NodeJS.ErrnoException) => {
+server.on('error', async (e: NodeJS.ErrnoException) => {
+  if (standalone && e.code === 'EADDRINUSE' && process.env.PORT === undefined) {
+    try {
+      const response = await fetch(`http://127.0.0.1:${PORT}/api/health`, {
+        redirect: 'error',
+        signal: AbortSignal.timeout(1500),
+      });
+      const health = await response.json();
+      if (response.ok && health.ok === true && health.name === 'St. Johns River Watch') {
+        console.log(`  River Watch is already running at http://127.0.0.1:${PORT}`);
+        openDashboard(PORT);
+        return;
+      }
+    } catch {
+      // The default port belongs to another service. Let Windows pick a free port.
+    }
+    server.listen(0, HOST);
+    return;
+  }
   if (e.code === 'EADDRINUSE') console.error(`Port ${PORT} is already in use - St. Johns River Watch may already be running. Open http://127.0.0.1:${PORT}`);
   else console.error(e);
   process.exit(1);
 });
+server.listen(PORT, HOST);
