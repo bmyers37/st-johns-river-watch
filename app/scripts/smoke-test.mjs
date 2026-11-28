@@ -56,6 +56,7 @@ try {
   let t = Date.now();
   const snap = await (await fetch(`${base}/api/snapshot`)).json();
   ok('snapshot', Array.isArray(snap.stations) && snap.stations.length > 20, `${snap.stations?.length} stations, ${snap.rain?.length} rain gauges, ${snap.alerts?.length} NWS alerts in ${Date.now() - t} ms`);
+  ok('USGS rainfall', snap.rain.some((g) => g.totals.h24 !== undefined), `${snap.rain.length} gauges`);
   const withStage = snap.stations.filter((s) => s.stage);
   ok('stations have timestamps', withStage.every((s) => s.stage.time && s.stage.source), `${withStage.length} with stage`);
   const cocoa = snap.stations.find((s) => s.lid === 'COCF1');
@@ -110,10 +111,9 @@ try {
   await page.screenshot({ path: path.join(shots, 'layers.png') });
   await clickButton(page, 'main', 'Layers');
 
-  // drop a pin near Squires Drive
+  // Drop a pin near a known point in the basin without relying on a map shortcut.
   await page.click('button[aria-label="Close panel"]');
-  await clickButton(page, 'main', 'Squires Dr');
-  await sleep(4000);
+  await page.evaluate(() => window.__map.jumpTo({ center: [-80.895, 28.651], zoom: 13.2, padding: { top: 0, bottom: 0, left: 0, right: 0 } }));
   await page.click('button[aria-label="Drop an analysis pin"]');
   const box = await page.$eval('main', (el) => {
     const r = el.getBoundingClientRect();
@@ -139,12 +139,31 @@ try {
   await page.screenshot({ path: path.join(shots, 'light.png') });
   await page.click('button[aria-label="Toggle light or dark theme"]');
 
+  // Exercise search and permission-based centering with a phone-sized screen.
+  await page.setViewport({ width: 390, height: 844, isMobile: true, hasTouch: true });
+  await browser.defaultBrowserContext().overridePermissions(base, ['geolocation']);
+  await page.setGeolocation({ latitude: 28.37, longitude: -80.88 });
+  await page.evaluate(() => localStorage.removeItem('sjrw:dashboardOpen'));
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('button::-p-text(Near me)', { visible: true });
+  await clickButton(page, 'main', 'Near me', true);
+  await page.type('input[aria-label="Search town or gauge"]', 'Cocoa');
+  await page.waitForFunction(() => [...document.querySelectorAll('[aria-label="Nearby gauges"] button.card')]
+    .some((button) => /cocoa/i.test(button.textContent)), { timeout: 60000 });
+  ok('mobile gauge search', true);
+  await clickButton(page, '[aria-label="Nearby gauges"]', 'Use my location', true);
+  await page.waitForFunction(() => document.querySelector('[aria-label="Nearby gauges"] button.card')?.textContent.includes('Measured') &&
+    Math.abs(window.__map.getCenter().lat - 28.37) < .01);
+  await page.click('[aria-label="Nearby gauges"] button.card');
+  await page.waitForSelector('[aria-label="Details panel"]');
+  ok('mobile nearby gauges', true);
+
   if (waitRefresh) {
     const before = snapshotRequests;
-    const center0 = await page.evaluate(() => localStorage.getItem('sjrw:view'));
+    const center0 = await page.evaluate(() => localStorage.getItem('sjrw:basinView'));
     console.log('waiting 130 s for the automatic refresh…');
     await sleep(130000);
-    const center1 = await page.evaluate(() => localStorage.getItem('sjrw:view'));
+    const center1 = await page.evaluate(() => localStorage.getItem('sjrw:basinView'));
     ok('automatic refresh', snapshotRequests > before, `${snapshotRequests - before} snapshot request(s) in 130 s; map view unchanged: ${center0 === center1}`);
   }
 

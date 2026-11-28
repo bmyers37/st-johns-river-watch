@@ -10,8 +10,7 @@ export const USGS_HUCS = ['03080101', '03080102', '03080103', '03080201', '03080
 
 export const ENDPOINTS = {
   nwpsGauges: 'https://api.water.noaa.gov/nwps/v1/gauges',
-  usgsIV: 'https://waterservices.usgs.gov/nwis/iv/',
-  usgsSite: 'https://waterservices.usgs.gov/nwis/site/',
+  usgs: 'https://api.waterdata.usgs.gov/ogcapi/v1/collections',
   nwsAlerts: 'https://api.weather.gov/alerts/active?area=FL',
   epqs: 'https://epqs.nationalmap.gov/v1/json',
   nldi: 'https://api.water.usgs.gov/nldi/linked-data',

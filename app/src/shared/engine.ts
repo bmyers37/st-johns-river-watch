@@ -156,7 +156,10 @@ export class DataEngine {
     return this.track('USGS 48-hour stage history', () => this.cache.get('usgsRecent', TTL.usgsRecent, fetchUsgsRecentStage), [] as UsgsSeries[]);
   }
   rainSeries() {
-    return this.track('USGS rain gauges', () => this.cache.get('rain', TTL.rain, fetchUsgsRain), [] as UsgsSeries[]);
+    return this.track('USGS rain gauges', () => this.cache.get('rain', TTL.rain, fetchUsgsRain), [] as UsgsSeries[]).then((series) => {
+      this.noteCacheError('USGS rain gauges', 'rain');
+      return series;
+    });
   }
   alerts() {
     return this.track('NWS active alerts', () => this.cache.get('alerts', TTL.alerts, fetchNwsAlerts), [] as OfficialAlert[]).then((v) => {
@@ -483,7 +486,8 @@ export class DataEngine {
       .map((s) => {
         const sum = (h: number) => {
           const from = now - h * 3600_000;
-          return +s.points.filter((p) => p.t > from).reduce((a, p) => a + p.v, 0).toFixed(2);
+          const points = s.points.filter((p) => p.t > from && p.t <= now);
+          return points.length ? +points.reduce((a, p) => a + p.v, 0).toFixed(2) : undefined;
         };
         const last = s.points[s.points.length - 1];
         return {

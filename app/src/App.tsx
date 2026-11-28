@@ -11,8 +11,9 @@ import StationPanel from './components/StationPanel';
 import PinPanel from './components/PinPanel';
 import AlertsPanel from './components/AlertsPanel';
 import SourcesPanel from './components/SourcesPanel';
+import NearbyPanel from './components/NearbyPanel';
 
-export type Panel = 'station' | 'pin' | 'alerts' | 'sources' | null;
+export type Panel = 'station' | 'pin' | 'alerts' | 'sources' | 'nearby' | null;
 
 export default function App() {
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
@@ -25,13 +26,14 @@ export default function App() {
   const [theme, setTheme] = usePersistentState<'dark' | 'light'>('theme', 'dark');
   const [basemap, setBasemap] = usePersistentState<Basemap>('basemap', 'dark');
   const [layers, setLayers] = usePersistentState<LayerPrefs>('layers', DEFAULT_LAYERS);
-  const [dashboardOpen, setDashboardOpen] = usePersistentState('dashboardOpen', true);
+  const [dashboardOpen, setDashboardOpen] = usePersistentState('dashboardOpen', window.matchMedia('(min-width: 768px)').matches);
   const [favorites, setFavorites] = usePersistentState<string[]>('favorites', []);
   const [locations, setLocations] = usePersistentState<SavedLocation[]>('locations', []);
   const [alertSettings, setAlertSettings] = usePersistentState<AlertSettings>('alertSettings', DEFAULT_ALERT_SETTINGS);
   const [appAlerts, setAppAlerts] = usePersistentState<AppAlert[]>('appAlerts', []);
 
   const [panel, setPanel] = useState<Panel>(null);
+  const [nearbyPosition, setNearbyPosition] = useState<{ lat: number; lon: number } | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [pin, setPin] = useState<{ lat: number; lon: number } | null>(null);
   const [pinMode, setPinMode] = useState(false);
@@ -207,8 +209,21 @@ export default function App() {
             mapOnly={mapOnly}
             onExitMapOnly={toggleMapOnly}
             onOpenAlerts={() => setPanel('alerts')}
+            onOpenNearby={() => setPanel('nearby')}
             theme={theme}
           />
+          {panel === 'nearby' && (
+            <NearbyPanel
+              stations={snapshot?.stations}
+              position={nearbyPosition}
+              onPosition={(position) => {
+                setNearbyPosition(position);
+                setFlyTo({ ...position, zoom: 11, t: Date.now() });
+              }}
+              onSelect={(id) => openStation(id, true)}
+              onClose={() => setPanel(null)}
+            />
+          )}
           {panel === 'station' && selected && (
             <StationPanel
               key={selected.id}

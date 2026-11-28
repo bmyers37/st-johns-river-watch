@@ -2,7 +2,7 @@
 
 A live monitoring dashboard for the St. Johns River, Florida, from its headwaters to Jacksonville.
 It opens with a basin overview on the first visit and remembers the last view in that browser.
-Select **My location** and grant browser permission to center the map on your location within the coverage area.
+Select **Near me** to search for a town or gauge. Select **Use my location** and grant browser permission to center the map and see nearby gauge readings.
 
 * **Live map**: every NOAA/NWS forecast point and USGS gauge in the basin, coloured by official flood
   category, with the water level, a rising/falling arrow, stale-data marks and pulsing for moderate or major floods.
@@ -65,7 +65,7 @@ No API keys or paid services are used.
 | Data | Source | Endpoint |
 |---|---|---|
 | Official flood categories, thresholds, observations (30 days), forecasts, historic crests, impacts, datums | NOAA National Water Prediction Service | `api.water.noaa.gov/nwps/v1/gauges` |
-| Stage, discharge, 48 h history, 90-day record, rain gauges, gauge datums | USGS Water Services | `waterservices.usgs.gov/nwis/iv`, `/nwis/site` |
+| Stage, discharge, history, rain gauges, gauge datums | USGS Water Data APIs | `api.waterdata.usgs.gov/ogcapi/v1/collections` |
 | Official warnings, watches and advisories (+ polygons) | National Weather Service | `api.weather.gov/alerts/active?area=FL` |
 | Stormwater pipes/culverts, inlets, control structures and weirs (with invert elevations where recorded), channels, basins | City of Titusville | `gis.titusville.com/arcgis/rest/services/StormwaterFeatures/MapServer` |
 | Drainage ditches (with recorded flow direction) | Brevard County Public Works | `gis.brevardfl.gov/.../External_PW_Roadways_and_Drainage_Ditches` |
@@ -77,7 +77,7 @@ No API keys or paid services are used.
 | FEMA flood zones | FEMA National Flood Hazard Layer | `hazards.fema.gov/arcgis/rest/services/public/NFHL` |
 | Base maps | Esri (dark grey, streets, imagery), USGS Topo | `server.arcgisonline.com`, `basemap.nationalmap.gov` |
 
-River Watch currently uses USGS WaterServices for gauge readings, history, rainfall and station metadata. USGS plans to retire that service on February 22, 2027. [USGS shutdown notice](https://waterservices.usgs.gov/)
+Self-hosted deployments can set the optional server-side `USGS_API_KEY` environment variable for higher USGS request limits. [USGS API documentation](https://api.waterdata.usgs.gov/docs/ogcapi/)
 
 ## How the data is handled
 

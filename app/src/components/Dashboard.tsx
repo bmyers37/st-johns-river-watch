@@ -125,9 +125,10 @@ export default function Dashboard(p: Props) {
 
   const loading = !p.snapshot;
   const rain = [...(p.snapshot?.rain ?? [])].sort((a, b) => (b.totals.h24 ?? 0) - (a.totals.h24 ?? 0));
+  const rainSource = p.snapshot?.sources.find((s) => s.name === 'USGS rain gauges');
 
   return (
-    <aside className="z-10 flex w-[392px] shrink-0 flex-col border-r" style={{ borderColor: 'var(--border)', background: 'var(--bg2)' }} aria-label="Dashboard">
+    <aside className="absolute inset-y-0 left-0 z-10 flex w-[min(392px,100%)] shrink-0 flex-col border-r md:relative md:w-[392px]" style={{ borderColor: 'var(--border)', background: 'var(--bg2)' }} aria-label="Dashboard">
       <div className="flex items-center justify-between px-3 pb-1 pt-3">
         <button className="label-xs flex items-center gap-1 hover:text-[var(--text)]" onClick={() => setKpiOpen(!kpiOpen)} aria-expanded={kpiOpen}>
           Overview {kpiOpen ? '▾' : '▸'}
@@ -295,14 +296,14 @@ export default function Dashboard(p: Props) {
         <div className="scroll-thin max-h-[86px] overflow-y-auto text-[11.5px]">
           {rain.length === 0 && (
             <div className="faint">
-              {loading || !p.snapshot?.sources.find((s) => s.name === 'USGS rain gauges')?.lastSuccess ? 'Rain gauges still loading (USGS can be slow)…' : 'No rain gauge reported in the last 7 days'}
+              {rainSource?.error ? 'USGS rainfall data is temporarily unavailable.' : loading || !rainSource?.lastSuccess ? 'Loading USGS rain gauges…' : 'No rain gauge reported in the last 7 days.'}
             </div>
           )}
           {rain.map((r) => (
             <div key={r.id} className="flex justify-between gap-2 py-0.5" title={`${r.source} · last report ${localTime(r.lastTime)}`}>
               <span className="truncate">{r.name.replace(/,? FL\.?$/i, '')}</span>
               <span className={`shrink-0 tabular-nums ${r.freshness !== 'fresh' ? 'text-amber-400' : ''}`}>
-                {r.totals.h24?.toFixed(2)}″ / {r.totals.d7?.toFixed(2)}″
+                {r.totals.h24 === undefined ? '—' : r.totals.h24.toFixed(2) + '″'} / {r.totals.d7 === undefined ? '—' : r.totals.d7.toFixed(2) + '″'}
               </span>
             </div>
           ))}

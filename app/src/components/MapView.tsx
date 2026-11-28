@@ -30,6 +30,7 @@ interface Props {
   mapOnly: boolean;
   onExitMapOnly: () => void;
   onOpenAlerts: () => void;
+  onOpenNearby: () => void;
   theme: 'dark' | 'light';
 }
 
@@ -137,8 +138,6 @@ export default function MapView(p: Props) {
   const rainMarkers = useRef<maplibregl.Marker[]>([]);
   const pinMarker = useRef<maplibregl.Marker | null>(null);
   const [zoom, setZoom] = useState(0);
-  const [locating, setLocating] = useState(false);
-  const [locationMessage, setLocationMessage] = useState('');
   const [layerOpen, setLayerOpen] = useState(false);
   const [layerStatus, setLayerStatus] = useState<Record<string, 'loading' | 'ok' | 'error' | 'zoom'>>({});
   const [mainStem, setMainStem] = useState<GeoJSON.FeatureCollection | null>(null);
@@ -435,8 +434,9 @@ export default function MapView(p: Props) {
     for (const r of p.snapshot.rain) {
       const el = document.createElement('div');
       el.className = 'rain-marker';
-      el.textContent = `☔ ${r.totals.h24?.toFixed(2)}″`;
-      el.title = `${r.name}\n24 h: ${r.totals.h24}″ · 72 h: ${r.totals.h72}″ · 7 d: ${r.totals.d7}″\n${r.source}${r.freshness !== 'fresh' ? ' · STALE' : ''}`;
+      const inches = (value: number | undefined) => value === undefined ? '—' : value.toFixed(2) + '″';
+      el.textContent = `☔ ${inches(r.totals.h24)}`;
+      el.title = `${r.name}\n24 h: ${inches(r.totals.h24)} · 72 h: ${inches(r.totals.h72)} · 7 d: ${inches(r.totals.d7)}\n${r.source}${r.freshness !== 'fresh' ? ' · STALE' : ''}`;
       if (r.freshness !== 'fresh') el.style.opacity = '0.6';
       rainMarkers.current.push(new maplibregl.Marker({ element: el, anchor: 'top', offset: [0, 10] }).setLngLat([r.lon, r.lat]).addTo(map));
     }
@@ -474,33 +474,6 @@ export default function MapView(p: Props) {
     setTimeout(() => mapRef.current?.resize(), 50);
   }, [p.mapOnly]);
 
-  function locate() {
-    const map = mapRef.current;
-    if (!map) return;
-    if (!navigator.geolocation) {
-      setLocationMessage('Location is unavailable in this browser.');
-      return;
-    }
-    setLocating(true);
-    setLocationMessage('');
-    navigator.geolocation.getCurrentPosition(({ coords }) => {
-      if (mapRef.current !== map) return;
-      setLocating(false);
-      const { longitude, latitude } = coords;
-      if (longitude < BASIN_BBOX.xmin || longitude > BASIN_BBOX.xmax ||
-          latitude < BASIN_BBOX.ymin || latitude > BASIN_BBOX.ymax) {
-        setLocationMessage('Your location is outside the St. Johns River map area.');
-        return;
-      }
-      map.flyTo({ center: [longitude, latitude], zoom: Math.max(map.getZoom(), 11), speed: 1.4 });
-    }, (error) => {
-      if (mapRef.current !== map) return;
-      setLocating(false);
-      setLocationMessage(error.code === error.PERMISSION_DENIED
-        ? 'Location access is blocked. Check your browser permissions.'
-        : 'Your location couldn’t be found. Try again.');
-    }, { timeout: 10000 });
-  }
   const officialFlood = p.snapshot?.alerts.filter((a) => a.isFlood && a.isWarning) ?? [];
 
   return (
@@ -521,17 +494,13 @@ export default function MapView(p: Props) {
           ))}
         </div>
         <div className="glass pointer-events-auto flex items-center gap-1 rounded-xl p-1 text-[12px]">
-          <button className="btn border-0 bg-transparent px-2" onClick={() => {
-            setLocationMessage('');
-            mapRef.current?.fitBounds(basinBounds, basinView);
-          }} disabled={locating} title="Whole river: headwaters to Jacksonville">
+          <button className="btn border-0 bg-transparent px-2" onClick={() => mapRef.current?.fitBounds(basinBounds, basinView)} title="Whole river: headwaters to Jacksonville">
             <Home size={14} /> Whole river
           </button>
-          <button className="btn border-0 bg-transparent px-2" onClick={locate} disabled={locating}>
-            <Navigation size={14} /> {locating ? 'Locating…' : 'My location'}
+          <button className="btn border-0 bg-transparent px-2" onClick={p.onOpenNearby}>
+            <Navigation size={14} /> Near me
           </button>
         </div>
-        {locationMessage && <p className="glass max-w-64 rounded-xl px-3 py-2 text-xs" role="status">{locationMessage}</p>}
         {layerOpen && <LayerPanel layers={p.layers} onLayers={p.onLayers} status={layerStatus} zoom={zoom} flowInfo={flowInfo} onClose={() => setLayerOpen(false)} />}
       </div>
 
